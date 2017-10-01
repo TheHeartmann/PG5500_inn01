@@ -29,27 +29,24 @@ const int Y_PIN = A0;
 const int NO_MOTION = 505;
 const int INPUT_MIN = 0;
 const int INPUT_MAX = 1023;
+// To avoid jittery text when moving the joystick around
+const int JITTER_OFFSET = 4;
 int yRead;
 int yReadPrev;
-int speed;
 
 // timer
 SimpleTimer timer;
-int timerId;
-unsigned long timeSinceChange;
-unsigned long timestamp;
 
 int x = 0, y = 0; // start top left
 
 // Marquee speed
 int animDelay = 50;
 int nextDelay;
-const int MIN_DELAY = 1;
-const int MAX_DELAY = 500;
+const int MIN_DELAY = 10;
+const int MAX_DELAY = 60;
 
 // Marquee text
-char text[] = "HEY, PEOPLE! VEL: ";
-char speedValue[] = "000.00";
+char text[] = "PG5500 // INN01: MATRIX";
 int len = strlen(text);
 
 // Direction
@@ -61,10 +58,7 @@ void setup()
     lmd.setEnabled(true);
     lmd.setIntensity(2); // 0 = low, 10 = high
 
-    timerId = timer.setInterval(animDelay, updateDisplay);
-
-    // for debugging purposes:
-    Serial.begin(9600);
+    updateDisplay();
 }
 
 void loop()
@@ -75,11 +69,8 @@ void loop()
     yRead = analogRead(Y_PIN);
     if (yRead != yReadPrev)
     {
-        unsigned long currentMillis = millis();
-        timeSinceChange = currentMillis - timestamp;
-        timestamp = currentMillis;
-
-        backwards = yRead < NO_MOTION;
+        // gives it enough of an offset to not be jittery
+        backwards = yRead < NO_MOTION-JITTER_OFFSET;
         int min, max;
         if (backwards)
         {
@@ -91,47 +82,32 @@ void loop()
             max = NO_MOTION;
             min = INPUT_MAX;
         }
-        nextDelay = mapToDelay(yRead, min, max);
-
-        timer.setTimeout(max(timeSinceChange, 0), setDelay);
+        animDelay = mapToDelay(yRead, min, max);
 
         yReadPrev = yRead;
-    }
-
-    Serial.print("Y: ");
-    Serial.print(yRead);
-    Serial.print(" Delay: ");
-    Serial.print(animDelay);
-    Serial.print(" Moving backwards: ");
-    Serial.println(yRead < NO_MOTION);
-
-    // Advance to next/previous coordinate
-     x = backwards ? ++x : --x;
-    // if (--x < len * -8){
-    // ++x;
-    if (x < len * -8)
-    {
-        x = LEDMATRIX_WIDTH;
-    } else if (x > LEDMATRIX_WIDTH) {
-        x = len * -8;
     }
 }
 
 void updateDisplay()
 {
-    lmd.clear();
-
     // Draw the text to the current position
     drawString(text, len, x, 0);
 
     // Toggle display of the new framebuffer
     lmd.display();
-}
 
-void setDelay(){
-    animDelay = nextDelay;
-    // timer.deleteTimer(timerId);
-    timerId = timer.setInterval(animDelay, updateDisplay);
+    // Advance to next/previous coordinate
+    x = backwards ? ++x : --x;
+    if (x < len * -8)
+    {
+        x = LEDMATRIX_WIDTH;
+    }
+    else if (x > LEDMATRIX_WIDTH)
+    {
+        x = len * -8;
+    }
+
+    timer.setTimeout(animDelay, updateDisplay);
 }
 
 int mapToDelay(int value, int min, int max)
