@@ -21,7 +21,7 @@ Please see the attached schematics file for an example of how to wire the projec
 
 ## Video documentation
 
-The video demonstration is available at [this link](http://youtube.com/probably_some_random_numbers)
+The video demonstration is available at [this link](https://youtu.be/ZpuexGntez8)
 
 ## Code
 
@@ -34,6 +34,8 @@ Both libraries have been very useful, the *LEDMatrixDriver* making connecting an
 ### Further development
 
 Given more time and a desire to take things further, it would be interesting to look at scrolling text not just from side to side, but also up and down (in particular if you have a multiline sentence).
+
+Another idea would be to make the text not move without user input, so that the default state is still. This would be a natural next step from the current iteration, but would require slightly cleverer use of timing and input handling.
 
 ## Authors
 
