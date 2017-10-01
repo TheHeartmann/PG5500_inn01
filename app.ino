@@ -1,7 +1,15 @@
 #include <LEDMatrixDriver.hpp>
+#include <SimpleTimer.h>
+#include "font.h"
 
-// This sketch draw marquee text on your LED matrix using the hardware SPI driver Library by Bartosz Bielawski.
-// Example written 16.06.2017 by Marko Oette, www.oette.info
+/*
+ * This sketch is based on the MarqueeText example from the LEDMatrixDriver library
+ * but has been tweaked to a minor degree and extended with some additional functonality
+ * to scroll the text based on analog input.
+ *
+ * Created by Thomas Hartmann
+ * 2017.10.01
+ */
 
 // Define the ChipSelect pin for the led matrix (Dont use the SS or MISO pin of your Arduino!)
 // Other pins are arduino specific SPI pins (MOSI=DIN of the LEDMatrix and CLK) see https://www.arduino.cc/en/Reference/SPI
@@ -15,143 +23,160 @@ const int LEDMATRIX_SEGMENTS = 1;
 // The LEDMatrixDriver class instance
 LEDMatrixDriver lmd(LEDMATRIX_SEGMENTS, LEDMATRIX_CS_PIN);
 
-void setup() {
-  // init the display
-  lmd.setEnabled(true);
-  lmd.setIntensity(2);   // 0 = low, 10 = high
-}
+// Joystick config
+const int Y_PIN = A0;
+// This appears to be the neutral position when on a flat surface.
+const int NO_MOTION = 505;
+const int INPUT_MIN = 0;
+const int INPUT_MAX = 1023;
+int yRead;
+int yReadPrev;
+int speed;
 
-int x=0, y=0;   // start top left
+// timer
+SimpleTimer timer;
+int timerId;
+unsigned long timeSinceChange;
+unsigned long timestamp;
 
-// This is the font definition. You can use http://gurgleapps.com/tools/matrix to create your own font or sprites.
-// If you like the font feel free to use it. I created it myself and donate it to the public domain.
-byte font[95][8] = { {0,0,0,0,0,0,0,0}, // SPACE
-                     {0x10,0x18,0x18,0x18,0x18,0x00,0x18,0x18}, // EXCL
-                     {0x28,0x28,0x08,0x00,0x00,0x00,0x00,0x00}, // QUOT
-                     {0x00,0x0a,0x7f,0x14,0x28,0xfe,0x50,0x00}, // #
-                     {0x10,0x38,0x54,0x70,0x1c,0x54,0x38,0x10}, // $
-                     {0x00,0x60,0x66,0x08,0x10,0x66,0x06,0x00}, // %
-                     {0,0,0,0,0,0,0,0}, // &
-                     {0x00,0x10,0x18,0x18,0x08,0x00,0x00,0x00}, // '
-                     {0x02,0x04,0x08,0x08,0x08,0x08,0x08,0x04}, // (
-                     {0x40,0x20,0x10,0x10,0x10,0x10,0x10,0x20}, // )
-                     {0x00,0x10,0x54,0x38,0x10,0x38,0x54,0x10}, // *
-                     {0x00,0x08,0x08,0x08,0x7f,0x08,0x08,0x08}, // +
-                     {0x00,0x00,0x00,0x00,0x00,0x18,0x18,0x08}, // COMMA
-                     {0x00,0x00,0x00,0x00,0x7e,0x00,0x00,0x00}, // -
-                     {0x00,0x00,0x00,0x00,0x00,0x00,0x06,0x06}, // DOT
-                     {0x00,0x04,0x04,0x08,0x10,0x20,0x40,0x40}, // /
-                     {0x00,0x38,0x44,0x4c,0x54,0x64,0x44,0x38}, // 0
-                     {0x04,0x0c,0x14,0x24,0x04,0x04,0x04,0x04}, // 1
-                     {0x00,0x30,0x48,0x04,0x04,0x38,0x40,0x7c}, // 2
-                     {0x00,0x38,0x04,0x04,0x18,0x04,0x44,0x38}, // 3
-                     {0x00,0x04,0x0c,0x14,0x24,0x7e,0x04,0x04}, // 4
-                     {0x00,0x7c,0x40,0x40,0x78,0x04,0x04,0x38}, // 5
-                     {0x00,0x38,0x40,0x40,0x78,0x44,0x44,0x38}, // 6
-                     {0x00,0x7c,0x04,0x04,0x08,0x08,0x10,0x10}, // 7
-                     {0x00,0x3c,0x44,0x44,0x38,0x44,0x44,0x78}, // 8
-                     {0x00,0x38,0x44,0x44,0x3c,0x04,0x04,0x78}, // 9
-                     {0x00,0x18,0x18,0x00,0x00,0x18,0x18,0x00}, // :
-                     {0x00,0x18,0x18,0x00,0x00,0x18,0x18,0x08}, // ;
-                     {0x00,0x10,0x20,0x40,0x80,0x40,0x20,0x10}, // <
-                     {0x00,0x00,0x7e,0x00,0x00,0xfc,0x00,0x00}, // =
-                     {0x00,0x08,0x04,0x02,0x01,0x02,0x04,0x08}, // >
-                     {0x00,0x38,0x44,0x04,0x08,0x10,0x00,0x10}, // ?
-                     {0x00,0x30,0x48,0xba,0xba,0x84,0x78,0x00}, // @
-                     {0x00,0x1c,0x22,0x42,0x42,0x7e,0x42,0x42}, // A
-                     {0x00,0x78,0x44,0x44,0x78,0x44,0x44,0x7c}, // B
-                     {0x00,0x3c,0x44,0x40,0x40,0x40,0x44,0x7c}, // C
-                     {0x00,0x7c,0x42,0x42,0x42,0x42,0x44,0x78}, // D
-                     {0x00,0x78,0x40,0x40,0x70,0x40,0x40,0x7c}, // E
-                     {0x00,0x7c,0x40,0x40,0x78,0x40,0x40,0x40}, // F
-                     {0x00,0x3c,0x40,0x40,0x5c,0x44,0x44,0x78}, // G
-                     {0x00,0x42,0x42,0x42,0x7e,0x42,0x42,0x42}, // H
-                     {0x00,0x7c,0x10,0x10,0x10,0x10,0x10,0x7e}, // I
-                     {0x00,0x7e,0x02,0x02,0x02,0x02,0x04,0x38}, // J
-                     {0x00,0x44,0x48,0x50,0x60,0x50,0x48,0x44}, // K
-                     {0x00,0x40,0x40,0x40,0x40,0x40,0x40,0x7c}, // L
-                     {0x00,0x82,0xc6,0xaa,0x92,0x82,0x82,0x82}, // M
-                     {0x00,0x42,0x42,0x62,0x52,0x4a,0x46,0x42}, // N
-                     {0x00,0x3c,0x42,0x42,0x42,0x42,0x44,0x38}, // O
-                     {0x00,0x78,0x44,0x44,0x48,0x70,0x40,0x40}, // P
-                     {0x00,0x3c,0x42,0x42,0x52,0x4a,0x44,0x3a}, // Q
-                     {0x00,0x78,0x44,0x44,0x78,0x50,0x48,0x44}, // R
-                     {0x00,0x38,0x40,0x40,0x38,0x04,0x04,0x78}, // S
-                     {0x00,0x7e,0x90,0x10,0x10,0x10,0x10,0x10}, // T
-                     {0x00,0x42,0x42,0x42,0x42,0x42,0x42,0x3e}, // U
-                     {0x00,0x42,0x42,0x42,0x42,0x44,0x28,0x10}, // V
-                     {0x80,0x82,0x82,0x92,0x92,0x92,0x94,0x78}, // W
-                     {0x00,0x42,0x42,0x24,0x18,0x24,0x42,0x42}, // X
-                     {0x00,0x44,0x44,0x28,0x10,0x10,0x10,0x10}, // Y
-                     {0x00,0x7c,0x04,0x08,0x7c,0x20,0x40,0xfe}, // Z
-                      // (the font does not contain any lower case letters. you can add your own.)
-                  };    // {}, //
+int x = 0, y = 0; // start top left
 
 // Marquee speed
-const int ANIM_DELAY = 50;
+int animDelay = 50;
+int nextDelay;
+const int MIN_DELAY = 1;
+const int MAX_DELAY = 500;
 
 // Marquee text
-char text[] = "HEY, PEOPLE!";
+char text[] = "HEY, PEOPLE! VEL: ";
+char speedValue[] = "000.00";
 int len = strlen(text);
+
+// Direction
+bool backwards = false;
+
+void setup()
+{
+    // init the display
+    lmd.setEnabled(true);
+    lmd.setIntensity(2); // 0 = low, 10 = high
+
+    timerId = timer.setInterval(animDelay, updateDisplay);
+
+    // for debugging purposes:
+    Serial.begin(9600);
+}
 
 void loop()
 {
- // Draw the text to the current position
- drawString(text, len, x, 0);
-   // In case you wonder why we don't have to call lmd.clear() in every loop: The font has a opaque (black) background...
+    timer.run();
 
- // Toggle display of the new framebuffer
- lmd.display();
+    // read values from input
+    yRead = analogRead(Y_PIN);
+    if (yRead != yReadPrev)
+    {
+        unsigned long currentMillis = millis();
+        timeSinceChange = currentMillis - timestamp;
+        timestamp = currentMillis;
 
- // Wait to let the human read the display
- delay(ANIM_DELAY);
+        backwards = yRead < NO_MOTION;
+        int min, max;
+        if (backwards)
+        {
+            min = INPUT_MIN;
+            max = NO_MOTION;
+        }
+        else
+        {
+            max = NO_MOTION;
+            min = INPUT_MAX;
+        }
+        nextDelay = mapToDelay(yRead, min, max);
 
- // Advance to next coordinate
- if( --x < len * -8 )
-   x = LEDMATRIX_WIDTH;
+        timer.setTimeout(max(timeSinceChange, 0), setDelay);
+
+        yReadPrev = yRead;
+    }
+
+    Serial.print("Y: ");
+    Serial.print(yRead);
+    Serial.print(" Delay: ");
+    Serial.print(animDelay);
+    Serial.print(" Moving backwards: ");
+    Serial.println(yRead < NO_MOTION);
+
+    // Advance to next/previous coordinate
+     x = backwards ? ++x : --x;
+    // if (--x < len * -8){
+    // ++x;
+    if (x < len * -8)
+    {
+        x = LEDMATRIX_WIDTH;
+    } else if (x > LEDMATRIX_WIDTH) {
+        x = len * -8;
+    }
 }
 
+void updateDisplay()
+{
+    lmd.clear();
+
+    // Draw the text to the current position
+    drawString(text, len, x, 0);
+
+    // Toggle display of the new framebuffer
+    lmd.display();
+}
+
+void setDelay(){
+    animDelay = nextDelay;
+    // timer.deleteTimer(timerId);
+    timerId = timer.setInterval(animDelay, updateDisplay);
+}
+
+int mapToDelay(int value, int min, int max)
+{
+    return map(value, min, max, MIN_DELAY, MAX_DELAY);
+}
 
 /**
  * This function draws a string of the given length to the given position.
  */
-void drawString(char* text, int len, int x, int y )
+void drawString(char *text, int len, int x, int y)
 {
-  for( int idx = 0; idx < len; idx ++ )
-  {
-    int c = text[idx] - 32;
+    for (int idx = 0; idx < len; idx++)
+    {
+        int c = text[idx] - 32;
 
-    // stop if char is outside visible area
-    if( x + idx * 8  > LEDMATRIX_WIDTH )
-      return;
+        // stop if char is outside visible area
+        if (x + idx * 8 > LEDMATRIX_WIDTH)
+            return;
 
-    // only draw if char is visible
-    if( 8 + x + idx * 8 > 0 )
-      drawSprite( font[c], x + idx * 8, y, 8, 8 );
-  }
+        // only draw if char is visible
+        if (8 + x + idx * 8 > 0)
+            drawSprite(font[c], x + idx * 8, y, 8, 8);
+    }
 }
 
 /**
  * This draws a sprite to the given position using the width and height supplied (usually 8x8)
  */
-void drawSprite( byte* sprite, int x, int y, int width, int height )
+void drawSprite(byte *sprite, int x, int y, int width, int height)
 {
-  // The mask is used to get the column bit from the sprite row
-  byte mask = B10000000;
+    // The mask is used to get the column bit from the sprite row
+    byte mask = B10000000;
 
-  for( int iy = 0; iy < height; iy++ )
-  {
-    for( int ix = 0; ix < width; ix++ )
+    for (int iy = 0; iy < height; iy++)
     {
-      lmd.setPixel(x + ix, y + iy, (bool)(sprite[iy] & mask ));
+        for (int ix = 0; ix < width; ix++)
+        {
+            lmd.setPixel(x + ix, y + iy, (bool)(sprite[iy] & mask));
 
-      // shift the mask by one pixel to the right
-      mask = mask >> 1;
+            // shift the mask by one pixel to the right
+            mask = mask >> 1;
+        }
+
+        // reset column mask
+        mask = B10000000;
     }
-
-    // reset column mask
-    mask = B10000000;
-  }
 }
-
-

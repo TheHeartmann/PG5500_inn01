@@ -1,0 +1,20 @@
+{
+  "files.associations": {
+    "*.js": "javascriptreact",
+    "*.asset": "yaml",
+    "*.meta": "yaml",
+    ".gitignore": "shellscript",
+    "*.unity": "yaml",
+    ".collabignore": "shellscript",
+    "prompt_*_setup": "shellscript",
+    "*rc": "shellscript",
+    "*profile": "shellscript",
+    ".gitconfig": "gitconfig",
+    "*.pde": "cpp",
+    "bitset": "cpp",
+    "algorithm": "cpp",
+    "chrono": "cpp",
+    "limits": "cpp",
+    "random": "cpp"
+  }
+}
