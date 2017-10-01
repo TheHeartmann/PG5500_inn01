@@ -41,6 +41,8 @@ Given more time and a desire to take things further, it would be interesting to 
 
 Another idea would be to make the text not move without user input, so that the default state is still. This would be a natural next step from the current iteration, but would require slightly cleverer use of timing and input handling.
 
+Yet another idea was to have the the percentage of max speed displayed at the end of the text using some clever string formatting to always keep the amount of digits equal, but this was considered too high cost for too little benefit.
+
 ## Authors
 
 Thomas Hartmann
