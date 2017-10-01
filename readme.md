@@ -1,10 +1,10 @@
-# PG5500 Embedded Systems - inn01: LED Matrix
+# PG5500 Embedded Systems assignment 01: LED Matrix
 
 This repo contains everything related to the first assignment in PG500.
 
 ## Functionality
 
-The matrix scrolls the text that is defined within the code. The joystick controls the speed and the direction of the text based on user input.
+The matrix scrolls the text that is defined in the source code. The joystick controls the speed and the direction of the text based on user input.
 
 ### A note about the joystick
 
@@ -30,6 +30,10 @@ The video demonstration is available at [this link](https://youtu.be/ZpuexGntez8
 I have used the [Bartosz Bielawski's *LEDMatrixDriver*](https://github.com/bartoszbielawski/LEDMatrixDriver) and [Marcello Romani's *SimpleTimer*](https://github.com/marcelloromani/Arduino-SimpleTimer/tree/master/SimpleTimer) libraries to control the matrix and to handle delaying updating without ignoring input respectively.
 
 Both libraries have been very useful, the *LEDMatrixDriver* making connecting and controlling the driver very simple, and the *SimpleTimer* library taking care of all the time control I had the need for.
+
+### Notes
+
+The constant `JITTER_OFFSET` helps to avoid jittery text when the joystick is close to neutral, but is a very rough number and would not be appropriate for something like a game where every little movement matters. For this however, it adequately demonstrates its purpose and makes the program run much smoother.
 
 ### Further development
 
