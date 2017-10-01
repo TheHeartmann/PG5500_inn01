@@ -30,7 +30,7 @@ const int NO_MOTION = 505;
 const int INPUT_MIN = 0;
 const int INPUT_MAX = 1023;
 // To avoid jittery text when moving the joystick around
-const int JITTER_OFFSET = 4;
+const int JITTER_OFFSET = 14;
 int yRead;
 int yReadPrev;
 
